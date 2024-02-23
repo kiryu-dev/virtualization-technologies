@@ -21,7 +21,7 @@ services:
       - traefik.http.routers.whoami.entrypoints=web
       - traefik.http.services.whoami.loadbalancer.server.port=3333
 
-  http-server:
+  http-server-rand:
     image: registry.csc.sibsutis.ru/is042s17/virtualization-technologies:v1.0.0
     container_name: randomizer
     labels:
@@ -29,3 +29,38 @@ services:
       - traefik.http.routers.randomizer.rule=Host(`localhost`)
       - traefik.http.routers.randomizer.entrypoints=web
       - traefik.http.services.randomizer.loadbalancer.server.port=8080
+
+  http-server-users:
+    build:
+      dockerfile: Dockerfile
+      args:
+        SERVER_CONFIG_PATH: "./conf/http_server.yml"
+    container_name: user-service
+    expose:
+      - "8080"
+    env_file: .env
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.user-service.rule=Host(`localhost`) && PathPrefix(`/users`)
+      - traefik.http.routers.user-service.entrypoints=web
+      - traefik.http.services.user-service.loadbalancer.server.port=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:latest
+    container_name: pg
+    env_file: .env
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - PGDATA=/var/lib/postgresql/data/
+    volumes:
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "sh -c 'pg_isready -U ${DB_USERNAME} -d ${DB_NAME}'" ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
