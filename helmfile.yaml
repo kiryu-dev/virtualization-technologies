@@ -1,0 +1,30 @@
+repositories:
+  - name: ealenn
+    url: https://ealenn.github.io/charts
+
+environments:
+  first:
+    values:
+      - host: echo.first.com
+  second:
+    values:
+      - host: echo.second.com
+
+---
+releases:
+  - name: echo-server-{{ .Environment.Name }}
+    chart: ealenn/echo-server
+    installed: true
+    values:
+      - ingress:
+          enabled: true
+          hosts:
+            - host: {{ .Values.host }}
+              paths:
+                - /
+          annotations:
+            spec.ingressClassName: nginx
+          application:
+            logs:
+              ignore:
+                ping: true
